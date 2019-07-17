@@ -1,4 +1,5 @@
-import React, { Component } from 'react'
+import React, { Component } from 'react';
+import {makeTextInCanvas} from './makeTextInCanvas';
 
 class Canvas extends Component {
   constructor(){
@@ -8,150 +9,99 @@ class Canvas extends Component {
         x: 0,
         y: 30,
         text: ''
-      }
+      },
+      result : undefined
     }
   }
 
-  makeTextInCanvas(x, y, text, originalImage){
-    const file= document.querySelector('input[type=file]').files[0];
-    const image = this.refs.image;
-    const canvas = this.refs.canvas;
-    const ctx = canvas.getContext("2d");
-    const reader = new FileReader();
-    
-    if (file) {
-      reader.readAsDataURL(file);
-    }
-
-    reader.addEventListener("load", function (event) {
-
-      const img = new Image();
-      img.onload = function(){
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img,0,0);
-
-        ctx.font = "30px Arial";
-  
-        const lineheight = 30;
-        const lines = text.split('\n');
-  
-        for (let i = 0; i<lines.length; i++){
-          ctx.fillText(lines[i], Number(x), Number(y) + (i * lineheight))
-        };
-      }
-      image.onload = function(){
-        image.width = canvas.width;
-        image.height = canvas.height;
-      }
-      img.src = event.target.result;
-      image.src = event.target.result;
-    }, false);
-
-    const CanvasUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); 
-    return CanvasUrl;
-  }
-
-  handleChange(e){
+  handleChange(e) {
     const {name, value} = e.target;
     const form = this.state.form;
     form[name] = value;
-      
+
+    this.makeCanvas();
     this.setState({
       form
-    }) 
+    }); 
+
   }
 
-  // applyText() {
-  //   const form = this.state.form;
-  //   const content = form.text;
+  makeCanvas() {
+    const inputImage = this.state.file;
+    const {x, y, text} = this.state.form;
+    const font = 'Arial';
+    const fontsize = 30;
+    if(inputImage === undefined) {
+      alert("이미지 파일을 선택해 주세요");
+      return;
+    }
 
-  //   const x = Number(form.x);
-  //   const y = Number(form.y)
+    makeTextInCanvas(inputImage, x, y, text, font, fontsize, (err, result) => {
+      console.log("result !! ", this);
+      console.log('makeCanvas res',result);
+      if(err) {
+        console.log(err);
+      }
+      this.setState({
+        result : result
+      });
+    });
+  }
 
-  //   const src = this.refs.image.src;
-  //   const canvas = this.refs.canvas;
-  //   const ctx = canvas.getContext("2d");
+  apply(){
+    this.makeCanvas()
+  }
 
-  //   const img = new Image();
-  //   img.onload = function(){
-  //     canvas.width = img.width;
-  //     canvas.height = img.height;
-  //     ctx.drawImage(img,0,0);
-  //     ctx.font = "30px Arial";
+  handleImageChange(e) {
+    e.preventDefault();
+    const target = e.target;
+    const reader = new FileReader();
+    const file = target.files[0];
 
-  //     var lineheight = 30;
-  //     var lines = content.split('\n');
+    reader.onloadend = () => {
+      if(!file.type.startsWith('image/')){
+        alert("이미지 파일이 아닙니다");
+        return;
+      }
+      
+      this.setState({
+        file: file,
+        imagePreviewUrl: reader.result
+      });
+    }
 
-  //     for (let i = 0; i<lines.length; i++){
-  //       ctx.fillText(lines[i], x, y + (i*lineheight) )};
-  //     // ctx.fillText(content,x,y);
-  //   }
-  //   img.src = src;
+    reader.readAsDataURL(file);
 
-  // }
-
-  // handleImg(){
-  //   const canvas = this.refs.canvas;
-  //   const image = this.refs.image;
-  //   const ctx = canvas.getContext('2d');
-
-  //   const file= document.querySelector('input[type=file]').files[0];
-
-  //   const reader = new FileReader();
-
-  //   // reader.onload = function(event){
-  //     reader.addEventListener("load", function (event) {
-
-  //     const img = new Image();
-  //     img.onload = function(){
-  //       canvas.width = img.width;
-  //       canvas.height = img.height;
-  //       ctx.drawImage(img,0,0);
-  //     }
-  //     image.onload = function(){
-  //       image.width = canvas.width;
-  //       image.height = canvas.height;
-  //     }
-  //     img.src = event.target.result;
-  //     image.src = event.target.result;
-  //   }, false);
-
-  //   if (file) {
-  //     reader.readAsDataURL(file);
-  //   }
-  // }
+  }
 
   download(){
-    const canvas = this.refs.canvas;
-    const image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); 
-    window.location.href=image;
+    const image = this.state.result.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    window.location.href = image;
   }
 
   render() {
+    console.log("render",this.state.result && this.state.result.toDataURL());
     return (
       <div style={{display: 'relative'}}>
        <label>Image File:</label><br/>
-        <input type="file" id="imageLoader" ref="imageLoader" name="imageLoader"/>
+        <input type="file" onChange={this.handleImageChange.bind(this)} multiple/>
         <div>
-          <img id="originalImage" ref="image" alt=""/>  
+          <img ref="image" src={this.state.imagePreviewUrl} alt=""/>  
         </div>
 
         <div>
-          text: <textarea rows="5" name="text" value={this.state.form.text} onChange={this.handleChange.bind(this)}  ref="text" style={{width: '310px'}}/>
+          text: <textarea rows="5" name="text" value={this.state.form.text} onChange={this.handleChange.bind(this)} style={{width: '250px'}}/>
         </div>
         <div>
-          x : <input type="number" name="x" value={this.state.form.x} onChange={this.handleChange.bind(this)} ref="x"/>
-          y : <input type="number" name="y" value={this.state.form.y} onChange={this.handleChange.bind(this)} ref="y"/>
+          x : <input type="number" name="x" value={this.state.form.x} onChange={this.handleChange.bind(this)} />
+          y : <input type="number" name="y" value={this.state.form.y} onChange={this.handleChange.bind(this)} />
         </div>
         <div>
-          <button id="apply" onClick={this.makeTextInCanvas.bind(this, this.state.form.x, this.state.form.y, this.state.form.text)}>적용</button>
-          <button id="download" onClick={this.download.bind(this)} style={{marginLeft: '125px', marginBottom: '20px', padding: '3px 5px'}}>Downloads as Image</button>
+          <button id="apply" onClick={this.apply.bind(this)}>적용</button>
+          <button id="download" onClick={this.download.bind(this)} style={{marginLeft: '125px', marginBottom: '20px', padding: '3px 5px'}}>Download</button>
         </div>
         <div style={{position: 'relative'}}>
-          <canvas ref="canvas" >
-            Your browser does not support the canvas element.
-          </canvas> 
+          <img ref="canv" src={this.state.result && this.state.result.toDataURL()}  alt=''/>
         </div>
       </div>
     )
